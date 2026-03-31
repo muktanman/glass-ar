@@ -29,12 +29,29 @@ export function useARScene() {
 
     try {
       const model = await loadModel(modelUrl);
+
+      // Normalize model: center it and scale so its width = 1 unit.
+      // This makes it frame-independent regardless of how the GLB was exported.
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+
+      const normalizeScale = 1 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(normalizeScale);
+      // Re-center after scaling
+      model.position.sub(center.multiplyScalar(normalizeScale));
+
+      // Most GLB sunglasses models face +Z (away from camera).
+      // Rotate 180° on Y so they face the viewer correctly.
+      model.rotation.y = Math.PI;
+
       glassesGroup.add(model);
       currentModelRef.current = model;
     } catch {
       console.warn("Model not found, using placeholder geometry");
-      // Placeholder: a simple box until real .glb files are added
-      const geo = new THREE.BoxGeometry(0.4, 0.05, 0.05);
+      const geo = new THREE.BoxGeometry(1, 0.15, 0.2);
       const mat = new THREE.MeshStandardMaterial({ color: 0x111111 });
       const mesh = new THREE.Mesh(geo, mat);
       glassesGroup.add(mesh);

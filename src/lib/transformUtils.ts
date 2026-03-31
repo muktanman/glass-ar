@@ -65,11 +65,11 @@ export function computeGlassesTransform(
     rightEarPt.x - leftEarPt.x
   );
 
-  // Scale: proportional to inter-ear distance (full face width).
-  // Glasses should span roughly ear-to-ear, so we use ear spread as the
-  // reference and apply a multiplier tuned for standard GLB sunglasses models.
+  // Scale: model is normalized to 1 unit wide, so the scale value IS the
+  // desired world-space width of the glasses. Ear spread gives the full
+  // face width; glasses sit inside that so we use 0.85 of it.
   const earSpread = leftEarPt.distanceTo(rightEarPt);
-  const s = earSpread * 1.1;
+  const s = earSpread * 0.85;
 
   return {
     position: center,
