@@ -89,7 +89,7 @@ export function computeGlassesTransform(
   // ── Scale ─────────────────────────────────────────────────────────────────
   // Model is normalised to 1 unit wide; scale it to 85 % of ear spread
   // so the frame spans from temple to temple without overhanging.
-  const s = earSpread * 0.85;
+  const s = earSpread * 1.4;
 
   return {
     position,

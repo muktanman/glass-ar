@@ -30,23 +30,31 @@ export function useARScene() {
     try {
       const model = await loadModel(modelUrl);
 
-      // Normalize model: center it and scale so its width = 1 unit.
-      // This makes it frame-independent regardless of how the GLB was exported.
+      // Step 1: apply facing rotation FIRST so the bounding box
+      // is computed in the correct visual orientation.
+      // rotation.y = PI/2 turns -X-facing models to face +Z (toward camera).
+      model.rotation.y = Math.PI / 2;
+
+      // Step 2: compute bounding box AFTER rotation so size.x is the
+      // actual visual width (left-right as seen by the camera).
       const box = new THREE.Box3().setFromObject(model);
       const size = new THREE.Vector3();
       box.getSize(size);
       const center = new THREE.Vector3();
       box.getCenter(center);
 
-      const normalizeScale = 1 / Math.max(size.x, size.y, size.z);
+      // Step 3: normalise so the visual width (size.x) = 1 unit.
+      // Previously we used max(x,y,z) which picked the wrong axis after
+      // rotation and left the model appearing only a few % of its real size.
+      const normalizeScale = size.x > 0.001 ? 1 / size.x : 1;
       model.scale.setScalar(normalizeScale);
-      // Re-center after scaling
-      model.position.sub(center.multiplyScalar(normalizeScale));
 
-      // Rotate so the front of the glasses faces +Z (toward the camera).
-      // Most GLB sunglasses models export with the front facing -X,
-      // so rotation.y = PI/2 brings -X → +Z correctly.
-      model.rotation.y = Math.PI / 2;
+      // Step 4: center the model at the group's local origin.
+      model.position.set(
+        -center.x * normalizeScale,
+        -center.y * normalizeScale,
+        -center.z * normalizeScale
+      );
 
       glassesGroup.add(model);
       currentModelRef.current = model;
