@@ -43,9 +43,10 @@ export function useARScene() {
       // Re-center after scaling
       model.position.sub(center.multiplyScalar(normalizeScale));
 
-      // Most GLB sunglasses models face +Z (away from camera).
-      // Rotate 180° on Y so they face the viewer correctly.
-      model.rotation.y = Math.PI;
+      // Rotate so the front of the glasses faces +Z (toward the camera).
+      // Most GLB sunglasses models export with the front facing -X,
+      // so rotation.y = PI/2 brings -X → +Z correctly.
+      model.rotation.y = Math.PI / 2;
 
       glassesGroup.add(model);
       currentModelRef.current = model;
