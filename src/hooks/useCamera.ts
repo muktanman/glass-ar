@@ -23,7 +23,9 @@ export function useCamera() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        await videoRef.current.play().catch(() => {
+          // Swallow AbortError thrown when stop is called before play resolves
+        });
       }
       setIsActive(true);
     } catch (err) {
@@ -34,11 +36,13 @@ export function useCamera() {
   }, []);
 
   const stopCamera = useCallback(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+      video.srcObject = null;
+    }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
     setIsActive(false);
   }, []);
 
