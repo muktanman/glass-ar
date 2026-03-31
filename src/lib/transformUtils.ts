@@ -33,10 +33,11 @@ export function computeGlassesTransform(
   const leftEar = landmarks[LEFT_EAR];
   const rightEar = landmarks[RIGHT_EAR];
 
-  // Convert NDC → world space (map [0,1] to [-1,1] for x, flip y)
+  // Convert NDC → world space.
+  // X is negated to mirror-match the CSS scale-x-[-1] on the video element.
   const toWorld = (lm: NormalizedLandmark): THREE.Vector3 =>
     new THREE.Vector3(
-      (lm.x - 0.5) * 2,
+      -(lm.x - 0.5) * 2,
       -(lm.y - 0.5) * 2,
       -lm.z * 2
     );
@@ -64,9 +65,11 @@ export function computeGlassesTransform(
     rightEarPt.x - leftEarPt.x
   );
 
-  // Scale: proportional to inter-eye distance
-  const interEyeDist = leftEyePt.distanceTo(rightEyePt);
-  const s = interEyeDist * 1.6;
+  // Scale: proportional to inter-ear distance (full face width).
+  // Glasses should span roughly ear-to-ear, so we use ear spread as the
+  // reference and apply a multiplier tuned for standard GLB sunglasses models.
+  const earSpread = leftEarPt.distanceTo(rightEarPt);
+  const s = earSpread * 1.1;
 
   return {
     position: center,
