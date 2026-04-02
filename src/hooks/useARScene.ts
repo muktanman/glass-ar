@@ -97,20 +97,23 @@ export function useARScene() {
       // Pass raw result back to the caller (used for face scan progress).
       onFrame?.(result);
 
-      if (result?.faceLandmarks?.[0]) {
-        const calibration = getCalibration();
-        const transform = computeGlassesTransform(
-          result.faceLandmarks[0],
-          canvasAspect,
-          calibration
-        );
-        glassesGroup.position.copy(transform.position);
-        glassesGroup.rotation.copy(transform.rotation);
-        glassesGroup.scale.copy(transform.scale);
-        // Only show glasses once calibration is done.
-        glassesGroup.visible = calibration !== null;
-      } else {
-        glassesGroup.visible = false;
+      // result === null means no new video frame yet (RAF > video fps).
+      // Skip the visibility/transform update so glasses don't flicker off.
+      if (result !== null) {
+        if (result?.faceLandmarks?.[0]) {
+          const calibration = getCalibration();
+          const transform = computeGlassesTransform(
+            result.faceLandmarks[0],
+            canvasAspect,
+            calibration
+          );
+          glassesGroup.position.copy(transform.position);
+          glassesGroup.rotation.copy(transform.rotation);
+          glassesGroup.scale.copy(transform.scale);
+          glassesGroup.visible = calibration !== null;
+        } else {
+          glassesGroup.visible = false;
+        }
       }
 
       renderer.render(scene, camera);

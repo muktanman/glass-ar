@@ -63,15 +63,10 @@ export function computeGlassesTransform(
 
   const position = eyeMid.clone();
 
-  if (calibration) {
-    // Use the scanned eye Y so the glasses don't drift vertically.
-    position.y = calibration.eyeMidY;
-    // Place glasses at the measured nose-bridge depth + small forward offset.
-    position.z = calibration.noseBridgeZ + 0.08;
-  } else {
-    const earSpread = leftEar.distanceTo(rightEar);
-    position.z += earSpread * 0.04;
-  }
+  // Always use the live eye position so glasses follow head tilts/movement.
+  // Push slightly forward (toward camera) so the frame sits in front of the face.
+  const earSpread = leftEar.distanceTo(rightEar);
+  position.z += earSpread * 0.04;
 
   // ── Rotation ───────────────────────────────────────────────────────────────
   // Build orthonormal face basis from stable landmarks.
