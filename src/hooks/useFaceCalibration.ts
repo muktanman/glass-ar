@@ -6,8 +6,8 @@ import { NormalizedLandmark } from "@mediapipe/tasks-vision";
 // Landmarks used for glasses-fit measurements
 const LEFT_TEMPLE  = 127;  // left zygomatic arch — where glasses frame ends
 const RIGHT_TEMPLE = 356;  // right zygomatic arch
-const LEFT_EYE_C   = 468;  // left eye centre (iris landmark, most stable)
-const RIGHT_EYE_C  = 473;  // right eye centre
+const LEFT_EYE_C   = 33;   // left eye outer corner (always returned)
+const RIGHT_EYE_C  = 263;  // right eye outer corner (always returned)
 const NOSE_BRIDGE  = 6;    // top of nose bridge — where pads rest
 
 const FRAMES_NEEDED = 45;  // ~1.5 s at 30 fps
@@ -38,7 +38,7 @@ export function useFaceCalibration() {
    */
   const addSample = useCallback(
     (landmarks: NormalizedLandmark[], canvasAspect: number) => {
-      if (landmarks.length < 478) return; // needs full mesh
+      if (landmarks.length < 100) return; // sanity check — needs at least basic mesh
 
       const toWorld = (lm: NormalizedLandmark) => ({
         x: -(lm.x - 0.5) * 2 * canvasAspect,

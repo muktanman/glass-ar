@@ -20,10 +20,14 @@ export default function ARViewer({ selectedProduct }: ARViewerProps) {
   const initialized      = useRef(false);
   const calibrationRef   = useRef(calibration);
   const canvasAspectRef  = useRef(1);
+  const scanStateRef     = useRef(scanState);
+  const addSampleRef     = useRef(addSample);
   const [faceDetected, setFaceDetected] = useState(false);
 
-  // Keep calibrationRef in sync so the loop closure can read the latest value.
+  // Keep refs in sync — avoids recreating the render loop when these change.
   useEffect(() => { calibrationRef.current = calibration; }, [calibration]);
+  useEffect(() => { scanStateRef.current   = scanState;   }, [scanState]);
+  useEffect(() => { addSampleRef.current   = addSample;   }, [addSample]);
 
   // Initialize Three.js scene once canvas is mounted.
   useEffect(() => {
@@ -35,20 +39,23 @@ export default function ARViewer({ selectedProduct }: ARViewerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Per-frame callback: feed landmarks into the calibration hook if scanning.
+  // Per-frame callback: stable (no deps) — reads latest state via refs.
+  // This prevents the render loop from restarting every time scanState changes.
   const handleFrame = useCallback(
     (result: ReturnType<typeof import("@/lib/faceTracking").detectFace>) => {
+      // result is null when there is no new video frame — skip those.
+      if (result === null) return;
       const landmarks = result?.faceLandmarks?.[0];
       setFaceDetected(!!landmarks);
-      if (landmarks && scanState === "scanning") {
-        const aspect = canvasAspectRef.current;
-        addSample(landmarks, aspect);
+      if (landmarks && scanStateRef.current === "scanning") {
+        addSampleRef.current(landmarks, canvasAspectRef.current);
       }
     },
-    [scanState, addSample]
+    [] // stable — never changes, loop never needs to restart for this
   );
 
   // Start render loop once camera is active.
+  // Only depends on isActive — handleFrame is stable via refs above.
   useEffect(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -63,7 +70,7 @@ export default function ARViewer({ selectedProduct }: ARViewerProps) {
     );
     return () => stopLoop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, handleFrame]);
+  }, [isActive]);
 
   // Load/switch glasses model when product selection changes.
   useEffect(() => {
