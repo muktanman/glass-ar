@@ -30,26 +30,34 @@ export function useARScene() {
     try {
       const model = await loadModel(modelUrl);
 
-      // Step 1: apply facing rotation FIRST so the bounding box
-      // is computed in the correct visual orientation.
-      // rotation.y = PI/2 turns -X-facing models to face +Z (toward camera).
+      // Step 1: apply facing rotation FIRST.
       model.rotation.y = Math.PI / 2;
 
-      // Step 2: compute bounding box AFTER rotation so size.x is the
-      // actual visual width (left-right as seen by the camera).
+      // Step 2: force the full hierarchy to update its world matrices so
+      // Box3.setFromObject measures the correct rotated extents.
+      model.updateMatrixWorld(true);
+
+      // Step 3: measure bounding box in world space after rotation.
+      // size.x is now the visual width (left-right as the camera sees it).
       const box = new THREE.Box3().setFromObject(model);
       const size = new THREE.Vector3();
       box.getSize(size);
       const center = new THREE.Vector3();
       box.getCenter(center);
 
-      // Step 3: normalise so the visual width (size.x) = 1 unit.
-      // Previously we used max(x,y,z) which picked the wrong axis after
-      // rotation and left the model appearing only a few % of its real size.
-      const normalizeScale = size.x > 0.001 ? 1 / size.x : 1;
+      // Debug: log sizes so we can verify normalization is working.
+      console.log("[glass-ar] model raw size after rotation:", size);
+
+      // Step 4: normalise so the visual width = 1 unit.
+      // Use max(x, z) as a safety net — some models have their width in Z
+      // even after rotation if their original orientation differs.
+      const visualWidth = Math.max(size.x, size.z);
+      const normalizeScale = visualWidth > 0.001 ? 1 / visualWidth : 1;
       model.scale.setScalar(normalizeScale);
 
-      // Step 4: center the model at the group's local origin.
+      console.log("[glass-ar] normalizeScale:", normalizeScale, "→ model will be 1 unit wide");
+
+      // Step 5: center the model at the group's local origin.
       model.position.set(
         -center.x * normalizeScale,
         -center.y * normalizeScale,
@@ -91,6 +99,11 @@ export function useARScene() {
         glassesGroup.rotation.copy(transform.rotation);
         glassesGroup.scale.copy(transform.scale);
         glassesGroup.visible = true;
+        // Debug (runs once per second to avoid log spam)
+        if (Math.floor(performance.now() / 1000) !== (glassesGroup.userData.lastLog ?? -1)) {
+          glassesGroup.userData.lastLog = Math.floor(performance.now() / 1000);
+          console.log("[glass-ar] glassesGroup scale:", transform.scale.x.toFixed(3), "| position z:", transform.position.z.toFixed(3));
+        }
       } else {
         glassesGroup.visible = false;
       }
