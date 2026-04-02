@@ -9,6 +9,8 @@ const LEFT_EAR        = 234;
 const RIGHT_EAR       = 454;
 const FOREHEAD        = 10;
 const CHIN            = 152;
+const LEFT_TEMPLE     = 127;
+const RIGHT_TEMPLE    = 356;
 
 export interface GlassesTransform {
   position: THREE.Vector3;
@@ -43,12 +45,14 @@ export function computeGlassesTransform(
       -lm.z * 2
     );
 
-  const leftEye  = toWorld(landmarks[LEFT_EYE_OUTER]);
-  const rightEye = toWorld(landmarks[RIGHT_EYE_OUTER]);
-  const leftEar  = toWorld(landmarks[LEFT_EAR]);
-  const rightEar = toWorld(landmarks[RIGHT_EAR]);
-  const forehead = toWorld(landmarks[FOREHEAD]);
-  const chin     = toWorld(landmarks[CHIN]);
+  const leftEye    = toWorld(landmarks[LEFT_EYE_OUTER]);
+  const rightEye   = toWorld(landmarks[RIGHT_EYE_OUTER]);
+  const leftEar    = toWorld(landmarks[LEFT_EAR]);
+  const rightEar   = toWorld(landmarks[RIGHT_EAR]);
+  const forehead   = toWorld(landmarks[FOREHEAD]);
+  const chin       = toWorld(landmarks[CHIN]);
+  const leftTemple  = toWorld(landmarks[LEFT_TEMPLE]);
+  const rightTemple = toWorld(landmarks[RIGHT_TEMPLE]);
 
   // ── Position ───────────────────────────────────────────────────────────────
   // Eye midpoint in X and Y; use calibrated nose-bridge depth if available,
@@ -92,16 +96,18 @@ export function computeGlassesTransform(
 
   // ── Scale ──────────────────────────────────────────────────────────────────
   // Model is normalised to 1 unit wide (visual width after its rotation).
-  // Scale so the frame spans temple-to-temple.
+  // Always use per-frame temple spread so scale tracks front/back movement.
+  const currentTempleSpread = Math.sqrt(
+    (leftTemple.x - rightTemple.x) ** 2 + (leftTemple.y - rightTemple.y) ** 2
+  );
+
+  // Always scale from the live temple spread so glasses track front/back movement.
+  // 0.95 keeps the frame just inside the temple points.
   let s: number;
   if (calibration) {
-    // templeSpread already aspect-corrected from the scan; multiply by 0.95
-    // so the frame fits snugly without overhanging the temples.
-    s = calibration.templeSpread * 0.95;
-    console.log("[glass-ar] calibrated scale:", s.toFixed(3), "templeSpread:", calibration.templeSpread.toFixed(3));
+    s = currentTempleSpread * 0.95;
   } else {
-    // Fallback: derive from live ear spread.
-    const earSpread = Math.abs(leftEar.x - rightEar.x); // horizontal only
+    const earSpread = Math.abs(leftEar.x - rightEar.x);
     s = earSpread * 1.4;
   }
 

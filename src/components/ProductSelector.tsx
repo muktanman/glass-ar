@@ -39,7 +39,6 @@ export default function ProductSelector({
           <span className="text-xs font-medium text-gray-700 text-center leading-tight max-w-[72px]">
             {product.name}
           </span>
-          <span className="text-xs text-gray-400">${product.price}</span>
         </button>
       ))}
     </div>
