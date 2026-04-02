@@ -6,6 +6,7 @@ import { initThreeScene, ThreeContext, resizeRenderer } from "@/lib/threeSetup";
 import { loadModel } from "@/lib/modelLoader";
 import { initFaceLandmarker, detectFace, disposeFaceLandmarker } from "@/lib/faceTracking";
 import { computeGlassesTransform } from "@/lib/transformUtils";
+import { FaceCalibration } from "@/hooks/useFaceCalibration";
 
 export function useARScene() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -76,34 +77,38 @@ export function useARScene() {
     }
   }, []);
 
-  const startLoop = useCallback((video: HTMLVideoElement) => {
+  const startLoop = useCallback((
+    video: HTMLVideoElement,
+    getCalibration: () => FaceCalibration | null,
+    onFrame?: (landmarks: ReturnType<typeof detectFace>) => void
+  ) => {
     if (!threeRef.current) return;
     const { renderer, scene, camera, glassesGroup } = threeRef.current;
 
     const tick = () => {
       rafRef.current = requestAnimationFrame(tick);
 
-      // Resize if needed
       const canvas = renderer.domElement;
       resizeRenderer(renderer, camera, canvas);
+      const canvasAspect = canvas.clientWidth / canvas.clientHeight;
 
-      // Face tracking
       const result = detectFace(video);
+
+      // Pass raw result back to the caller (used for face scan progress).
+      onFrame?.(result);
+
       if (result?.faceLandmarks?.[0]) {
+        const calibration = getCalibration();
         const transform = computeGlassesTransform(
           result.faceLandmarks[0],
-          video.videoWidth,
-          video.videoHeight
+          canvasAspect,
+          calibration
         );
         glassesGroup.position.copy(transform.position);
         glassesGroup.rotation.copy(transform.rotation);
         glassesGroup.scale.copy(transform.scale);
-        glassesGroup.visible = true;
-        // Debug (runs once per second to avoid log spam)
-        if (Math.floor(performance.now() / 1000) !== (glassesGroup.userData.lastLog ?? -1)) {
-          glassesGroup.userData.lastLog = Math.floor(performance.now() / 1000);
-          console.log("[glass-ar] glassesGroup scale:", transform.scale.x.toFixed(3), "| position z:", transform.position.z.toFixed(3));
-        }
+        // Only show glasses once calibration is done.
+        glassesGroup.visible = calibration !== null;
       } else {
         glassesGroup.visible = false;
       }
